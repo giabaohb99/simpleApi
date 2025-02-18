@@ -5,6 +5,7 @@ class UserBase(BaseModel):
     name: str
     age: int
 
+
 class UserCreate(UserBase):
     pass
 
