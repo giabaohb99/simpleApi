@@ -1,11 +1,13 @@
+from urllib import request
 from sqlalchemy import func, select, insert, update, delete
 from app.database import database
 from app.models.users import users
 from app.schemas.users import UserCreate, UserUpdate, UserInDB
+from app.models.logs import logs
 from datetime import datetime
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 
-async def create_user_logic(user: UserCreate) -> UserInDB:
+async def create_user_logic(user: UserCreate , request: Request) -> UserInDB:
     if user.age < 0:
         raise HTTPException(status_code=400, detail="Age cannot be negative")
     query = insert(users).values(
@@ -16,6 +18,14 @@ async def create_user_logic(user: UserCreate) -> UserInDB:
         status=True
     )
     user_id = await database.execute(query)
+    await log_action(
+        action="create",
+        source_type="user",
+        source_id=user_id,
+        details=f"User {user.name} created",
+        ip_address=request.client.host,
+        user_agent = request.headers.get('User-Agent', 'unknown')
+    )
     return await get_user_logic(user_id)
 
 async def get_user_logic(user_id: int) -> UserInDB:
@@ -59,15 +69,27 @@ async def list_users_logic(
         "items": [UserInDB(**user) for user in user_list]
     }
 
-async def update_user_logic(user_id: int, user_update: UserUpdate) -> UserInDB:
+async def update_user_logic(user_id: int, user_update: UserUpdate, request: Request) -> UserInDB:
     current_user_query = select(users).where(users.c.id == user_id)
     current_user = await database.fetch_one(current_user_query)
     if not current_user:
         raise HTTPException(status_code=404, detail="User not found")
+
     updated_values = user_update.dict(exclude_unset=True)
     updated_values["updated_at"] = datetime.utcnow()
     query = update(users).where(users.c.id == user_id).values(**updated_values)
     await database.execute(query)
+
+    # Ghi log cho hành động update
+    await log_action(
+        action="update",
+        source_type="user",
+        source_id=user_id,
+        details=f"User {current_user['name']} updated",
+        ip_address=request.client.host,
+        user_agent = request.headers.get('User-Agent', 'unknown')
+    )
+
     return await get_user_logic(user_id)
 
 async def delete_user_logic(user_id: int) -> dict:
@@ -78,3 +100,14 @@ async def delete_user_logic(user_id: int) -> dict:
     query = delete(users).where(users.c.id == user_id)
     await database.execute(query)
     return {"message": "User deleted successfully"}
+
+async def log_action(action: str, source_type: str, source_id: int, details: str, ip_address: str, user_agent: str):
+    query = insert(logs).values(
+        action=action,
+        source_type=source_type,
+        source_id=source_id,
+        details=details,
+        ip_address=ip_address,
+        user_agent=user_agent
+    )
+    await database.execute(query)
