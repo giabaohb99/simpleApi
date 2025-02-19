@@ -3,7 +3,7 @@ from sqlalchemy import func, select, insert, update, delete
 from app.database import database
 from app.models.users import users
 from app.schemas.users import UserCreate, UserUpdate, UserInDB ,getJsonData
-from app.models.logs import logs
+from app.models.logs import logs , log_action
 from app.schemas.logs import ActionEnum, SourceTypeEnum
 from datetime import datetime
 from fastapi import HTTPException, Request
@@ -107,16 +107,7 @@ async def delete_user_logic(user_id: int) -> dict:
     await database.execute(query)
     return {"message": "User deleted successfully"}
 
-async def log_action(action: str, source_type: str, source_id: int, details: str, ip_address: str, user_agent: str):
-    query = insert(logs).values(
-        action=action,
-        source_type=source_type,
-        source_id=source_id,
-        details=details,
-        ip_address=ip_address,
-        user_agent=user_agent
-    )
-    await database.execute(query)
+
 
 def create_error_response(status_code: int, message: str):
     return {"error": {"status_code": status_code, "message": message}}

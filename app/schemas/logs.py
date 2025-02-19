@@ -10,6 +10,7 @@ class ActionEnum(str, Enum):
 
 class SourceTypeEnum(str, Enum):
     USER = "user"
+    CUSTOMER = "CUSTOMER"
     TODO = "todo"
 
 
@@ -26,3 +27,6 @@ class LogCreate(LogBase):
 class LogInDB(LogBase):
     id: int
     timestamp: datetime
+
+
+
