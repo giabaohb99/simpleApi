@@ -1,5 +1,17 @@
 from pydantic import BaseModel
 from datetime import datetime
+from enum import Enum
+
+
+class ActionEnum(str, Enum):
+    CREATE = "create"
+    UPDATE = "update"
+    DELETE = "delete"
+
+class SourceTypeEnum(str, Enum):
+    USER = "user"
+    TODO = "todo"
+
 
 class LogBase(BaseModel):
     action: str

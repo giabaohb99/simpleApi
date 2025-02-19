@@ -2,8 +2,9 @@ from urllib import request
 from sqlalchemy import func, select, insert, update, delete
 from app.database import database
 from app.models.users import users
-from app.schemas.users import UserCreate, UserUpdate, UserInDB
+from app.schemas.users import UserCreate, UserUpdate, UserInDB ,getJsonData
 from app.models.logs import logs
+from app.schemas.logs import ActionEnum, SourceTypeEnum
 from datetime import datetime
 from fastapi import HTTPException, Request
 
@@ -18,15 +19,16 @@ async def create_user_logic(user: UserCreate , request: Request) -> UserInDB:
         status=True
     )
     user_id = await database.execute(query)
+    new_user = await get_user_logic(user_id)
     await log_action(
-        action="create",
-        source_type="user",
+        action=ActionEnum.CREATE,
+        source_type=SourceTypeEnum.USER,
         source_id=user_id,
         details=f"User {user.name} created",
         ip_address=request.client.host,
         user_agent = request.headers.get('User-Agent', 'unknown')
     )
-    return await get_user_logic(user_id)
+    return getJsonData(new_user)
 
 async def get_user_logic(user_id: int) -> UserInDB:
     query = select(users).where(users.c.id == user_id)
@@ -82,15 +84,17 @@ async def update_user_logic(user_id: int, user_update: UserUpdate, request: Requ
 
     # Ghi log cho hành động update
     await log_action(
-        action="update",
-        source_type="user",
+        action=ActionEnum.CREATE,
+        source_type=SourceTypeEnum.USER,
         source_id=user_id,
         details=f"User {current_user['name']} updated",
         ip_address=request.client.host,
         user_agent = request.headers.get('User-Agent', 'unknown')
     )
 
-    return await get_user_logic(user_id)
+    myUser =  await get_user_logic(user_id)
+    return getJsonData(myUser)
+
 
 async def delete_user_logic(user_id: int) -> dict:
     user_query = select(users).where(users.c.id == user_id)
@@ -111,3 +115,4 @@ async def log_action(action: str, source_type: str, source_id: int, details: str
         user_agent=user_agent
     )
     await database.execute(query)
+
