@@ -16,7 +16,8 @@ async def create_user(user: UserCreate, request: Request):
 
 @router.get("/{user_id}", response_model=UserResponse, summary="Get user details", description="Retrieve information about a specific user by ID.")
 async def get_user(user_id: int):
-    return await get_user_logic(user_id)
+    myUser = await get_user_logic(user_id)
+    return getJsonData(myUser)
 
 @router.get("/", response_model=dict, summary="List users", description="List all users with optional filters for status, name, age, and creation dates.")
 async def list_users(
@@ -34,8 +35,7 @@ async def list_users(
 
 @router.put("/{user_id}", response_model=UserResponse, summary="Update user details", description="Update the details of an existing user specified by ID.")
 async def update_user(user_id: int, user_update: UserUpdate, request: Request):
-    myUser = await update_user_logic(user_id, user_update, request)
-    return getJsonData(myUser)
+    return await update_user_logic(user_id, user_update, request)
 
 @router.delete("/{user_id}", response_model=dict, summary="Delete a user", description="Delete a user specified by ID.")
 async def delete_user(user_id: int):

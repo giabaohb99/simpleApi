@@ -30,11 +30,13 @@ async def create_user_logic(user: UserCreate , request: Request) -> UserInDB:
     )
     return getJsonData(new_user)
 
+
 async def get_user_logic(user_id: int) -> UserInDB:
     query = select(users).where(users.c.id == user_id)
     user = await database.fetch_one(query)
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        error_response = create_error_response(404, "User not found")
+        raise HTTPException(status_code=404, detail=error_response)
     return UserInDB(**user)
 
 async def list_users_logic(
@@ -116,3 +118,5 @@ async def log_action(action: str, source_type: str, source_id: int, details: str
     )
     await database.execute(query)
 
+def create_error_response(status_code: int, message: str):
+    return {"error": {"status_code": status_code, "message": message}}
