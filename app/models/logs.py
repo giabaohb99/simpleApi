@@ -1,6 +1,6 @@
 from sqlalchemy import Table, Column, Integer, String, TIMESTAMP, MetaData, insert
 from sqlalchemy.sql import func
-from app import database
+from app.database import database
 
 metadata = MetaData()
 

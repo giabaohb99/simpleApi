@@ -1,45 +1,63 @@
 from enum import Enum
-from pydantic import BaseModel, validator
+from typing import Dict, Any, Tuple, List
+from pydantic import BaseModel, validator , Field
+
 import re
 from datetime import datetime
-class customerBase(BaseModel):
-    fullname: str
-    firstname: str
-    lastname: str
-    phone: str
-    note: str
-    gender: int
-    status: int
 
 
-class GenderEnum(str, Enum):
+class GenderEnum(int, Enum):
     GENDER_FEMALE = 1
     GENDER_MALE = 3
     GENDER_OTHER = 5
     GENDER_UNKNOWN = 7
 
-class StatusEnum(str, Enum):
+class StatusEnum(int, Enum):
     STATUS_ENABLE = 1
     STATUS_DISABLED = 3
 
-class customerCreate(customerBase):
+class customerBase(BaseModel):
+    fullname: str  # Không sử dụng alias
+    firstname: str
+    lastname: str
+    phone: str
+    note: str
+    gender: GenderEnum  # Sử dụng Enum để tự động xác thực
+    status: StatusEnum = StatusEnum.STATUS_ENABLE  # Sử dụng Enum và giá trị mặc định từ enum
+
     @validator('phone')
     def validate_phone(cls, v):
-        # Biểu thức chính quy để kiểm tra số điện thoại
         phone_pattern = re.compile(r'^\+?1?\d{9,15}$')
         if not phone_pattern.match(v):
             raise ValueError('Invalid phone number format')
         return v
 
-class customerUpdate(BaseModel):
-    fullname: str = None
-    firstname: str = None
-    lastname: str = None
-    phone: str = None
-    note: str = None
-    gender: int = None
-    status: int = None
+    class Config:
+        orm_mode = True
+        allow_population_by_field_name = True
 
+class customerCreate(customerBase):
+    pass
+
+class customerUpdate(BaseModel):
+    fullname: str  
+    firstname: str
+    lastname: str
+    phone: str
+    note: str
+    gender: GenderEnum  
+    status: StatusEnum 
+
+    @validator('phone')
+    def validate_phone(cls, v):
+        if v is not None:
+            phone_pattern = re.compile(r'^\+?1?\d{9,15}$')
+            if not phone_pattern.match(v):
+                raise ValueError('Invalid phone number format')
+        return v
+
+    class Config:
+        orm_mode = True
 class customerInDB(customerBase):
     id: int
     created_at: int
@@ -77,3 +95,45 @@ def getJsonData(customer: customerInDB) -> dict:
         "date_updated": customer.updated_at,
         "status": customer.status
     }
+
+def preprocess_data(data):
+    # Chuyển đổi JSON input để tương thích với các trường trong mô hình Pydantic
+    return {
+        "fullname": data.get("full_name"),
+        "firstname": data.get("first_name"),
+        "lastname": data.get("last_name"),
+        "phone": data.get("phone"),
+        "note": data.get("note"),
+        "gender": data.get("gender"),
+        "status": data.get("status", StatusEnum.STATUS_ENABLE)
+    }
+
+def validate_update_values(update_values: Dict[str, Any]) -> Tuple[bool, List[str]]:
+    errors = []
+    
+    if "phone" in update_values:
+        is_valid, error_msg = validate_phone(update_values['phone'])
+        if not is_valid:
+            errors.append(error_msg)
+            
+    if "fullname" in update_values:
+        is_valid, error_msg = validate_fullname(update_values['fullname'])
+        if not is_valid:
+            errors.append(error_msg)
+    
+    # Validate cho các trường khác nếu cần
+
+    return len(errors) == 0, errors
+
+def validate_fullname(fullname: str) -> Tuple[bool, str]:
+    if not fullname.replace(" ", "").isalpha():
+        return False, 'Full name contains invalid characters'
+    if len(fullname) > 100:
+        return False, 'Full name is too long; must be 100 characters or less'
+    return True, ''
+
+def validate_phone(phone: str) -> Tuple[bool, str]:
+    phone_pattern = re.compile(r'^\+?1?\d{9,15}\b')
+    if not phone_pattern.match(phone):
+        return False, 'Invalid phone number format'
+    return True, ''
