@@ -113,6 +113,7 @@ async def listCustomers(
     }
 
 async def updateCustomer(customer_id: int, request: Request):
+    validation_errors = []
     async with transaction_context() as transaction:
         try:
             # check xem là customer này có tồn tại hay không
@@ -168,7 +169,10 @@ async def updateCustomer(customer_id: int, request: Request):
             return getJsonData(updated_customer)
 
         except Exception as e:
-            raise_custom_http_exception(500, "Internal server error: " + str(e))
+            if validation_errors :
+                raise_custom_http_exception(422, "".join(validation_errors))
+            else :
+                raise_custom_http_exception(500, "Internal server error : " + str(e))
     
 
 def create_error_response(status_code: int, message: str):
